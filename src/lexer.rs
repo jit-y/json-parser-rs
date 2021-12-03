@@ -17,7 +17,6 @@ impl<'c> Lexer<'c> {
     }
 
     pub fn read_token(&mut self) -> Result<Token> {
-        dbg!(self.peek_char());
         self.skip_whitespace();
 
         let c = self.peek_char().ok_or(anyhow!("chars are run out"))?;

@@ -13,6 +13,7 @@ pub enum TokenType {
     False,
 
     Number(f64),
+    String,
 }
 
 #[derive(Debug, PartialEq)]

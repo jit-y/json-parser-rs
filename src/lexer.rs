@@ -29,6 +29,10 @@ impl<'c> Lexer<'c> {
             return self.build_number();
         }
 
+        if matches!(c, '"') {
+            return self.build_string();
+        }
+
         let tok = match c {
             '{' => Token::new(TokenType::LBrace, c),
             '}' => Token::new(TokenType::RBrace, c),
@@ -86,6 +90,74 @@ impl<'c> Lexer<'c> {
         Ok(Token::new(TokenType::Number(v), res))
     }
 
+    fn build_unicode(&mut self) -> Result<u16> {
+        let mut s = String::new();
+
+        for _ in 0..4 {
+            let c = self.next_char().ok_or(anyhow!(""))?;
+            if !c.is_ascii_hexdigit() {
+                return Err(anyhow!("Invalid char"));
+            }
+
+            s.push(c);
+        }
+
+        let res = u16::from_str_radix(s.as_str(), 16)?;
+
+        Ok(res)
+    }
+
+    fn build_string(&mut self) -> Result<Token> {
+        let mut res = String::new();
+        let mut unicode_buf = vec![];
+
+        self.next_char().ok_or(anyhow!("invalid char"))?;
+
+        fn append_unicode(buf: &mut Vec<u16>, target: &mut String) -> Result<()> {
+            if buf.is_empty() {
+                return Ok(());
+            }
+
+            let s = String::from_utf16(buf)?;
+            target.push_str(s.as_str());
+
+            Ok(())
+        }
+
+        while let Some(c) = self.next_char() {
+            match c {
+                '"' => {
+                    append_unicode(&mut unicode_buf, &mut res)?;
+                    break;
+                }
+                '\\' => {
+                    let c2 = self.next_char().ok_or(anyhow!("unexpected token"))?;
+                    match c2 {
+                        'u' => {
+                            let u = self.build_unicode()?;
+                            unicode_buf.push(u);
+                        }
+                        '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' => {
+                            append_unicode(&mut unicode_buf, &mut res)?;
+                            res.push('\\');
+                            res.push(c2);
+                        }
+                        _ => {
+                            append_unicode(&mut unicode_buf, &mut res)?;
+                            res.push(c2);
+                        }
+                    }
+                }
+                _ => {
+                    append_unicode(&mut unicode_buf, &mut res)?;
+                    res.push(c)
+                }
+            }
+        }
+
+        Ok(Token::new(TokenType::String, res))
+    }
+
     fn skip_whitespace(&mut self) {
         loop {
             match self.peek_char() {
@@ -108,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_tokenize() {
-        let text = r#"[true, false, null, -1.0e+9, {:}]"#;
+        let text = r#"[true, false, null, -1.0e+9, {"foo": "bar"}]"#;
         let mut l = Lexer::new(text);
         let exptected = vec![
             Token::new(TokenType::LBracket, "["),
@@ -121,7 +193,9 @@ mod tests {
             Token::new(TokenType::Number(-1.0e+9_f64), "-1.0e+9"),
             Token::new(TokenType::Comma, ","),
             Token::new(TokenType::LBrace, "{"),
+            Token::new(TokenType::String, "foo"),
             Token::new(TokenType::Colon, ":"),
+            Token::new(TokenType::String, "bar"),
             Token::new(TokenType::RBrace, "}"),
             Token::new(TokenType::RBracket, "]"),
         ];

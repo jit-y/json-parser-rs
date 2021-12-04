@@ -41,7 +41,7 @@ impl<'c> Lexer<'c> {
             ':' => Token::new(TokenType::Colon, c),
             ',' => Token::new(TokenType::Comma, c),
             '.' => Token::new(TokenType::Period, c),
-            _ => unimplemented!(),
+            _ => return Err(anyhow!("invalid symbol")),
         };
 
         self.next_char();

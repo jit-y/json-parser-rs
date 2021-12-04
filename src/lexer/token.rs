@@ -11,6 +11,8 @@ pub enum TokenType {
     Null,
     True,
     False,
+
+    Number(f64),
 }
 
 #[derive(Debug, PartialEq)]

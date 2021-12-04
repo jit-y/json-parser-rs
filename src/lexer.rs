@@ -25,6 +25,10 @@ impl<'c> Lexer<'c> {
             return self.build_keyword();
         }
 
+        if matches!(c, '0'..='9' | '-') {
+            return self.build_number();
+        }
+
         let tok = match c {
             '{' => Token::new(TokenType::LBrace, c),
             '}' => Token::new(TokenType::RBrace, c),
@@ -64,6 +68,24 @@ impl<'c> Lexer<'c> {
         Token::lookup_keyword(res.as_str()).ok_or(anyhow!("unknown keyword {}", res))
     }
 
+    fn build_number(&mut self) -> Result<Token> {
+        let mut res = String::new();
+
+        while let Some(c) = self.peek_char() {
+            if matches!(c, '-' | '0'..='9' | '.' | 'e' | 'E' | '+') {
+                res.push(*c);
+
+                self.next_char();
+            } else {
+                break;
+            }
+        }
+
+        let v = res.parse::<f64>()?;
+
+        Ok(Token::new(TokenType::Number(v), res))
+    }
+
     fn skip_whitespace(&mut self) {
         loop {
             match self.peek_char() {
@@ -87,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_tokenize() {
-        let text = r#"[true, false, null, {:}]"#;
+        let text = r#"[true, false, null, -1.0e+9, {:}]"#;
         let mut l = Lexer::new(text);
         let exptected = vec![
             Token::new(TokenType::LBracket, "["),
@@ -96,6 +118,8 @@ mod tests {
             Token::new(TokenType::False, "false"),
             Token::new(TokenType::Comma, ","),
             Token::new(TokenType::Null, "null"),
+            Token::new(TokenType::Comma, ","),
+            Token::new(TokenType::Number(-1.0e+9_f64), "-1.0e+9"),
             Token::new(TokenType::Comma, ","),
             Token::new(TokenType::LBrace, "{"),
             Token::new(TokenType::Colon, ":"),

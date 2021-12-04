@@ -105,7 +105,6 @@ impl<'c> Lexer<'c> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anyhow::Result;
 
     #[test]
     fn test_tokenize() {

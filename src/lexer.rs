@@ -182,7 +182,7 @@ mod tests {
     fn test_tokenize() {
         let text = r#"[true, false, null, -1.0e+9, {"foo": "bar"}]"#;
         let mut l = Lexer::new(text);
-        let exptected = vec![
+        let expected = vec![
             Token::new(TokenType::LBracket, "["),
             Token::new(TokenType::True, "true"),
             Token::new(TokenType::Comma, ","),
@@ -200,7 +200,27 @@ mod tests {
             Token::new(TokenType::RBracket, "]"),
         ];
 
-        for e in exptected {
+        for e in expected {
+            let tok = l.read_token();
+
+            assert!(tok.is_ok());
+            assert_eq!(tok.unwrap(), e);
+        }
+    }
+
+    fn test_tokenize_escaped_string() {
+        let text = r#"\u1F600\u1F601\t\n\f "#;
+        let mut l = Lexer::new(text);
+        let expected = vec![
+            Token::new(TokenType::String, "😀"),
+            Token::new(TokenType::String, "😁"),
+            Token::new(TokenType::String, "\\t"),
+            Token::new(TokenType::String, "\\n"),
+            Token::new(TokenType::String, "\\f"),
+            Token::new(TokenType::String, " "),
+        ];
+
+        for e in expected {
             let tok = l.read_token();
 
             assert!(tok.is_ok());

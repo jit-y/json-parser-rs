@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
     LBrace,
@@ -20,6 +22,12 @@ pub enum TokenType {
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.literal)
+    }
 }
 
 impl Token {

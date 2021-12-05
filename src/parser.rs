@@ -5,7 +5,9 @@ use crate::lexer::{
     Lexer,
 };
 use anyhow::{anyhow, Result};
+use std::array::IntoIter;
 use std::collections::HashMap;
+use std::iter::FromIterator;
 use std::iter::Peekable;
 use value::Value;
 
@@ -28,6 +30,7 @@ impl<'c> Parser<'c> {
                 TokenType::String(val) => self.parse_string(val.clone()),
                 TokenType::Number(val) => self.parse_number(*val),
                 TokenType::LBracket => self.parse_array(),
+                TokenType::LBrace => self.parse_object(),
                 _ => return Err(anyhow!("unexpected token {:?}", tok)),
             },
         }
@@ -81,7 +84,30 @@ impl<'c> Parser<'c> {
     }
 
     fn parse_object(&mut self) -> Result<Value> {
-        unimplemented!()
+        let mut res: HashMap<String, Value> = HashMap::new();
+
+        let key_tok = self.next_token().ok_or(anyhow!("err1"))?;
+        let key = match key_tok.token_type {
+            TokenType::String(v) => v,
+            _ => return Err(anyhow!("err2")),
+        };
+        let colon_tok = self.next_token().ok_or(anyhow!("err3"))?;
+        match colon_tok.token_type {
+            TokenType::Colon => {}
+            _ => return Err(anyhow!("err4")),
+        };
+
+        let val = self.parse()?;
+
+        let rbrace_tok = self.next_token().ok_or(anyhow!("err5"))?;
+        match rbrace_tok.token_type {
+            TokenType::RBrace => {}
+            _ => return Err(anyhow!("err4")),
+        };
+
+        res.insert(key, val);
+
+        Ok(Value::Object(res))
     }
 }
 
@@ -102,14 +128,25 @@ mod tests {
                     Value::Number(1e10_f64),
                 ]),
             ),
+            (
+                r#"{"foo": ["bar", {"baz": "ok"}]}"#,
+                Value::Object(HashMap::<_, _>::from_iter(IntoIter::new([(
+                    "foo".to_string(),
+                    Value::Array(vec![
+                        Value::String("bar".to_string()),
+                        Value::Object(HashMap::<_, _>::from_iter(IntoIter::new([(
+                            "baz".to_string(),
+                            Value::String("ok".to_string()),
+                        )]))),
+                    ]),
+                )]))),
+            ),
         ];
 
         for (t, e) in tests {
             let l = Lexer::new(t);
             let mut p = Parser::new(l);
             let v = p.parse();
-
-            dbg!(&v);
 
             assert!(v.is_ok());
             assert_eq!(v.unwrap(), e);

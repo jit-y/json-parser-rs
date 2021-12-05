@@ -7,13 +7,17 @@ use crate::lexer::{
 use anyhow::{anyhow, Result};
 use value::Value;
 
+use std::iter::Peekable;
+
 pub struct Parser<'c> {
-    lexer: Lexer<'c>,
+    lexer: Peekable<Lexer<'c>>,
 }
 
 impl<'c> Parser<'c> {
     pub fn new(lexer: Lexer<'c>) -> Self {
-        Self { lexer }
+        Self {
+            lexer: lexer.peekable(),
+        }
     }
 
     pub fn parse(&mut self) -> Result<Value> {
@@ -42,7 +46,20 @@ impl<'c> Parser<'c> {
     }
 
     fn parse_array(&mut self) -> Result<Value> {
-        unimplemented!()
+        let mut res = vec![];
+
+        while let Some(tok) = self.lexer.next() {
+            match tok.token_type {
+                TokenType::RBracket => break,
+                _ => {
+                    let v = self.parse()?;
+
+                    res.push(v);
+                }
+            }
+        }
+
+        Ok(Value::Array(res))
     }
 
     fn parse_object(&mut self) -> Result<Value> {

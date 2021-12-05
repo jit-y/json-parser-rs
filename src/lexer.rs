@@ -9,6 +9,14 @@ struct Lexer<'c> {
     chars: Peekable<Chars<'c>>,
 }
 
+impl<'c> Iterator for Lexer<'c> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_token().ok()
+    }
+}
+
 impl<'c> Lexer<'c> {
     pub fn new(input: &'c str) -> Self {
         Self {
@@ -16,7 +24,7 @@ impl<'c> Lexer<'c> {
         }
     }
 
-    pub fn read_token(&mut self) -> Result<Token> {
+    pub fn next_token(&mut self) -> Result<Token> {
         self.skip_whitespace();
 
         let c = self.peek_char().ok_or(anyhow!("chars are run out"))?;
@@ -33,20 +41,7 @@ impl<'c> Lexer<'c> {
             return self.build_string();
         }
 
-        let tok = match c {
-            '{' => Token::new(TokenType::LBrace, c),
-            '}' => Token::new(TokenType::RBrace, c),
-            '[' => Token::new(TokenType::LBracket, c),
-            ']' => Token::new(TokenType::RBracket, c),
-            ':' => Token::new(TokenType::Colon, c),
-            ',' => Token::new(TokenType::Comma, c),
-            '.' => Token::new(TokenType::Period, c),
-            _ => return Err(anyhow!("invalid symbol")),
-        };
-
-        self.next_char();
-
-        Ok(tok)
+        self.build_symbol()
     }
 
     fn peek_char(&mut self) -> Option<&char> {
@@ -90,23 +85,6 @@ impl<'c> Lexer<'c> {
         Ok(Token::new(TokenType::Number(v), res))
     }
 
-    fn build_unicode(&mut self) -> Result<u16> {
-        let mut s = String::new();
-
-        for _ in 0..4 {
-            let c = self.next_char().ok_or(anyhow!(""))?;
-            if !c.is_ascii_hexdigit() {
-                return Err(anyhow!("Invalid char"));
-            }
-
-            s.push(c);
-        }
-
-        let res = u16::from_str_radix(s.as_str(), 16)?;
-
-        Ok(res)
-    }
-
     fn build_string(&mut self) -> Result<Token> {
         let mut res = String::new();
         let mut unicode_buf = vec![];
@@ -134,7 +112,7 @@ impl<'c> Lexer<'c> {
                     let c2 = self.next_char().ok_or(anyhow!("unexpected token"))?;
                     match c2 {
                         'u' => {
-                            let u = self.build_unicode()?;
+                            let u = self.read_unicode()?;
                             unicode_buf.push(u);
                         }
                         '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' => {
@@ -156,6 +134,41 @@ impl<'c> Lexer<'c> {
         }
 
         Ok(Token::new(TokenType::String, res))
+    }
+
+    fn read_unicode(&mut self) -> Result<u16> {
+        let mut s = String::new();
+
+        for _ in 0..4 {
+            let c = self.next_char().ok_or(anyhow!(""))?;
+            if !c.is_ascii_hexdigit() {
+                return Err(anyhow!("Invalid char"));
+            }
+
+            s.push(c);
+        }
+
+        let res = u16::from_str_radix(s.as_str(), 16)?;
+
+        Ok(res)
+    }
+
+    fn build_symbol(&mut self) -> Result<Token> {
+        let tok = match self.next_char() {
+            Some(c) => match c {
+                '{' => Token::new(TokenType::LBrace, c),
+                '}' => Token::new(TokenType::RBrace, c),
+                '[' => Token::new(TokenType::LBracket, c),
+                ']' => Token::new(TokenType::RBracket, c),
+                ':' => Token::new(TokenType::Colon, c),
+                ',' => Token::new(TokenType::Comma, c),
+                '.' => Token::new(TokenType::Period, c),
+                _ => return Err(anyhow!("invalid symbol {}", c)),
+            },
+            None => return Err(anyhow!("no char")),
+        };
+
+        Ok(tok)
     }
 
     fn skip_whitespace(&mut self) {
@@ -201,9 +214,9 @@ mod tests {
         ];
 
         for e in expected {
-            let tok = l.read_token();
+            let tok = l.next();
 
-            assert!(tok.is_ok());
+            assert!(tok.is_some());
             assert_eq!(tok.unwrap(), e);
         }
     }
@@ -221,9 +234,9 @@ mod tests {
         ];
 
         for e in expected {
-            let tok = l.read_token();
+            let tok = l.next();
 
-            assert!(tok.is_ok());
+            assert!(tok.is_some());
             assert_eq!(tok.unwrap(), e);
         }
     }

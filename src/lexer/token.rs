@@ -13,13 +13,13 @@ pub enum TokenType {
     False,
 
     Number(f64),
-    String,
+    String(String),
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
-    token_type: TokenType,
-    literal: String,
+    pub token_type: TokenType,
+    pub literal: String,
 }
 
 impl Token {

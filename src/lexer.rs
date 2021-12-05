@@ -1,11 +1,11 @@
-mod token;
+pub mod token;
 
 use anyhow::{anyhow, Result};
 use std::iter::Peekable;
 use std::str::Chars;
 use token::{Token, TokenType};
 
-struct Lexer<'c> {
+pub struct Lexer<'c> {
     chars: Peekable<Chars<'c>>,
 }
 
@@ -133,7 +133,7 @@ impl<'c> Lexer<'c> {
             }
         }
 
-        Ok(Token::new(TokenType::String, res))
+        Ok(Token::new(TokenType::String(res.clone()), res))
     }
 
     fn read_unicode(&mut self) -> Result<u16> {
@@ -206,9 +206,9 @@ mod tests {
             Token::new(TokenType::Number(-1.0e+9_f64), "-1.0e+9"),
             Token::new(TokenType::Comma, ","),
             Token::new(TokenType::LBrace, "{"),
-            Token::new(TokenType::String, "foo"),
+            Token::new(TokenType::String("foo".to_string()), "foo"),
             Token::new(TokenType::Colon, ":"),
-            Token::new(TokenType::String, "bar"),
+            Token::new(TokenType::String("bar".to_string()), "bar"),
             Token::new(TokenType::RBrace, "}"),
             Token::new(TokenType::RBracket, "]"),
         ];
@@ -225,12 +225,12 @@ mod tests {
         let text = r#"\u1F600\u1F601\t\n\f "#;
         let mut l = Lexer::new(text);
         let expected = vec![
-            Token::new(TokenType::String, "😀"),
-            Token::new(TokenType::String, "😁"),
-            Token::new(TokenType::String, "\\t"),
-            Token::new(TokenType::String, "\\n"),
-            Token::new(TokenType::String, "\\f"),
-            Token::new(TokenType::String, " "),
+            Token::new(TokenType::String("😀".to_string()), "😀"),
+            Token::new(TokenType::String("😁".to_string()), "😁"),
+            Token::new(TokenType::String("\\t".to_string()), "\\t"),
+            Token::new(TokenType::String("\\n".to_string()), "\\n"),
+            Token::new(TokenType::String("\\f".to_string()), "\\f"),
+            Token::new(TokenType::String(" ".to_string()), " "),
         ];
 
         for e in expected {

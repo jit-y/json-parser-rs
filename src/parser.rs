@@ -12,10 +12,10 @@ use std::iter::Peekable;
 use thiserror::Error;
 use value::Value;
 
-type Result<T> = std::result::Result<T, ParserError>;
+pub type Result<T> = std::result::Result<T, ParserError>;
 
 #[derive(Error, Debug)]
-enum ParserError {
+pub enum ParserError {
     #[error("unexpected token: {0}")]
     UnexpectedToken(Token),
     #[error("no token")]
